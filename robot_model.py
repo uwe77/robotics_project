@@ -44,11 +44,12 @@ class puma560:
                             [i for i in self.j4],
                             [i for i in self.j5],
                             [i for i in self.j6]])
+        self.robot = RobotSerial(self.dh_params)
         
-        robot = RobotSerial(self.dh_params)
+    def set_roate(self)->None:
         frames = [Frame.from_euler_3(np.array([0.5 * pi, 0., pi]), np.array([[0.28127], [0.], [0.63182]])),
               Frame.from_euler_3(np.array([0.25 * pi, 0., 0.75 * pi]), np.array([[0.48127], [0.], [0.63182]])),
               Frame.from_euler_3(np.array([0.5 * pi, 0., pi]), np.array([[0.48127], [0.], [0.63182]])),
               Frame.from_euler_3(np.array([0.5 * pi, 0., pi]), np.array([[0.48127], [0.], [0.23182]]))]
-        trajectory = RobotTrajectory(robot, frames)
+        trajectory = RobotTrajectory(self.robot, frames)
         trajectory.show(motion="p2p")
