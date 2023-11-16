@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import add_path
 from visual_kinematics.RobotSerial import *
 from visual_kinematics.RobotTrajectory import *
 import numpy as np
