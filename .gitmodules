@@ -1,0 +1,3 @@
+[submodule "visual_kinematics"]
+	path = visual_kinematics
+	url = git@github.com:dbddqy/visual_kinematics.git
