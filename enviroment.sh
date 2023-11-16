@@ -1,2 +1,1 @@
-sudo pip3 install -e visual_kinematics \
-                     numpy
+sudo pip3 install numpy
