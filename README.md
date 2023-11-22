@@ -15,10 +15,13 @@ Enter "y" or "n" to chose auto input or not.
 copy the following string for forward kinematric input(if your not auto input):
 ```
 20 20 20 20 20 20
+20 -53.687 165.1699 171.566 52.9026 -136.0080
 ```
 <img src="./images/q1_input.png"/> \
 then the output should be... \
-<img src="./images/q1_output.png"/>
+<img src="./images/q1_output.png"/> \
+or \
+<img src="./images/q1_foutput.png"/>
 ### Question2
 copy the following string for inverse kinematric input(Cartesian matrix) (if your not auto input)
 ```
