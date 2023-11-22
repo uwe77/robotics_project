@@ -101,9 +101,9 @@ class puma560(): # system ZYZ
         Py = T[1, 3]
         Pz = T[2, 3]
         times = 1
-        for i in [1,-1]:
+        for k in [1,-1]:
             for j in [1,-1]:
-                for k in [1,-1]:
+                for i in [1,-1]:
                     print(f"======times:{times}========")
                     self[0] = np.arctan2(Py, Px) - np.arctan2(self.joints[2][0], i*np.sqrt(Px**2 + Py**2 - self.joints[2][0]**2))
                     #                                                            +-
