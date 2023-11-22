@@ -1,8 +1,8 @@
-from visual_kinematics.RobotSerial import*
-from visual_kinematics.RobotTrajectory import *
+import numpy as np
 from math import pi
 from sympy import sin, cos
 import sympy as sp
+
 class Joint:
     def __init__(self, ary=[0,0,0,0], r = 0) -> None:
         self._params = ary
@@ -36,10 +36,13 @@ class Joint:
                 [0, s(a), c(a), d],
                 [0, 0, 0, 1]]
         self.dh_matrix = np.array(matrix)
+    
+    def iv_dh_matrix(self):
+        return np.linalg.inv(self.dh_matrix)
 
 
 
-class puma560(RobotSerial): # system ZYZ
+class puma560(): # system ZYZ
     '''
     Joint   Link_offset   Link_Length   Twist_Angle theta
             mm            mm            rad         rad
@@ -58,64 +61,65 @@ class puma560(RobotSerial): # system ZYZ
             Joint([0., 0., 0., 0.], 260)]
     
     def __init__(self)->None:
-        self.joint_params = np.array([[j for j in i] for i in self.joints])
-        super().__init__(self.joint_params)
-    
-    def set_joint_angle(self, angles=[0,0,0,0,0,0])->None:
-        for i in range(len(self.joints)):
-            if self.joints[i].range < abs(angles[i]):
-                print(f"theta{i+1} is out of range! default value: {self.joints[i][3]}")
-            else:
-                self.joints[i].set_theta(angles[i] * pi/180)
-        self.dh_forward_kinematics()
-        self.__init__()
-        return (i.dh_matrix for i in self.joints)
-
-    def dh_forward_kinematics(self):
         for i in self.joints:
             i.kinamatics()
+    
+    def __setitem__(self, index, value)->None:
+        value = np.arctan2(np.sin(value), np.cos(value))
+        if self.joints[index].range < abs(value)*180/pi:
+            print(f"theta{index+1} is out of range! range: {-self.joints[index].range}~{self.joints[index].range}, value: {value*180/pi}")
+        self.joints[index].set_theta(value)
+        self.joints[index].kinamatics()
+
+    def __getitem__(self, index):
+        return self.joints[index][3]
+
+    def get_iv_trans_(self, index):
+        T_final = np.eye(4)
+        for i in range(index-1, -1, -1):
+            T_final = T_final @ self.joints[i].iv_dh_matrix()
+        return T_final
+
+    def get_trans_(self, index1=1, index2=6):
+        T_final = np.eye(4)
+        for i in range(index1-1, index2-1, 1):
+            T_final = T_final @ self.joints[i].dh_matrix
+        return T_final
+
+    def set_joints_angle(self, angles=[0,0,0,0,0,0])->None:
+        for i in range(len(self.joints)):
+            self[i] = angles[i]*pi/180
 
     def get_dh_trans(self):
-        self.dh_trans = np.eye(4)
-        for i in self.joints:
-            self.dh_trans = self.dh_trans @ i.dh_matrix
-        return self.dh_trans
+        self.dh_trans = self.get_trans_()
+        return self.dh_trans      
     
     def dh_inverse_kinematics(self, T):
-        t1, t2, t3, t4, t5, t6 = sp.symbols('t1 t2 t3 t4 t5 t6')
-        A1 = sp.Matrix([[cos(t1), 0., -sin(t1), 0.],
-                        [sin(t1), 0.,  cos(t1), 0.],
-                        [0.,     -1.,       0., 0.],
-                        [0.,      0.,       0., 1.]])
-        
-        A2 = sp.Matrix([[cos(t2), -sin(t2), 0., 0.432*cos(t2)],
-                        [sin(t2),  cos(t2), 0., 0.432*sin(t2)],
-                        [0.,      0.,       1., 0.],
-                        [0.,      0.,       0., 1.]])
-        
-        A3 = sp.Matrix([[cos(t3), 0.,  sin(t3), -0.02*cos(t3)],
-                        [sin(t3), 0., -cos(t3), -0.02*sin(t3)],
-                        [0.,      1.,       0.,  0.149],
-                        [0.,      0.,       0.,  1.]])
-        
-        A4 = sp.Matrix([[cos(t4), 0., -sin(t4), 0.],
-                        [sin(t4), 0.,  cos(t4), 0.],
-                        [0.,     -1.,       0., 0.433],
-                        [0.,      0.,       0., 1.]])
-
-        A5 = sp.Matrix([[cos(t5), 0.,  sin(t5), 0.],
-                        [sin(t5), 0., -cos(t5), 0.],
-                        [0.,      1.,       0., 0.],
-                        [0.,      0.,       0., 1.]])
-
-        A6 = sp.Matrix([[cos(t6), -sin(t6), 0., 0.],
-                        [sin(t6),  cos(t6), 0., 0.],
-                        [0.,      0.,       1., 0.],
-                        [0.,      0.,       0., 1.]])
-
-        T6 = A1*A2*A3*A4*A5*A6
-        solution = sp.solve((T6 - T), (t1, t2, t3, t4, t5, t6))
-        print(solution)
+        c = lambda t: np.cos(t)
+        s = lambda t: np.sin(t)
+        Px = T[0, 3]
+        Py = T[1, 3]
+        Pz = T[2, 3]
+        times = 1
+        for i in [1,-1]:
+            for j in [1,-1]:
+                for k in [1,-1]:
+                    print(f"======times:{times}========")
+                    self[0] = np.arctan2(Py, Px) - np.arctan2(self.joints[2][0], i*np.sqrt(Px**2 + Py**2 - self.joints[2][0]**2))
+                    #                                                            +-
+                    M = (Px**2 + Py**2 + Pz**2 - self.joints[1][1]**2 - self.joints[2][1]**2 - self.joints[2][0]**2 - self.joints[3][0]**2)/(2*self.joints[1][1])
+                    self[2] = np.arctan2(M, j*np.sqrt(self.joints[2][1]**2 + self.joints[3][0]**2 - M**2)) - np.arctan2(self.joints[2][1], self.joints[3][0])
+                    #                       +-
+                    self[1] = k*np.arctan2(self.joints[3][0] + self.joints[1][1]*s(self[2]), self.joints[2][1]+self.joints[1][1]*c(self[2])) - np.arctan2(Pz, c(self[0])*Px + s(self[0])*Py) - self[2]
+                    #         +-
+                    self[3] = np.arctan2(self.get_iv_trans_(3)[1]@T[:,2], self.get_iv_trans_(3)[0]@T[:,2])
+                    self[4] = np.arctan2(self.get_iv_trans_(4)[0]@T[:,2], -self.get_iv_trans_(4)[1]@T[:,2])
+                    self[5] = np.arctan2(self.get_iv_trans_(4)[2]@T[:,0], self.get_iv_trans_(4)[2]@T[:,1])
+                    print("Corresponding Variable (theta1, theta2, theta3, theta4, theta5, theta6)")
+                    for t in range(len(self.joints)):
+                        print(self[t]*180/pi, end=" ")
+                    print()
+                    times += 1
 
     def get_euler(self):
         self.theta = np.arccos(self.dh_trans[2,2]) * 180/pi
@@ -125,4 +129,3 @@ class puma560(RobotSerial): # system ZYZ
     
     def get_pose(self):
         return self.dh_trans[0,3], self.dh_trans[1,3], self.dh_trans[2,3]
-    
