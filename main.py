@@ -5,7 +5,7 @@ import re
 
 
 def main():
-    puma = puma560()
+    puma = puma560() # create a puma560 object
     auto = input("auto input y/n:")
     print("please enter the joint variable (in degree):")
     for i in range(6):
@@ -18,10 +18,10 @@ def main():
         rad = re.split(r'\s+', rad)
         rad = [float(i) for i in rad]
     print(rad)
-    puma.set_joints_angle(rad)
-    print("[n o a p]:\n", puma.get_dh_trans())
-    psi,theta,phi = puma.get_euler()
-    x,y,z = puma.get_pose()
+    puma.set_joints_angle(rad) # set all joints' theta
+    print("[n o a p]:\n", puma.get_dh_trans()) # get&print dh transform matrix(T6)
+    psi,theta,phi = puma.get_euler()# get&print euler angle
+    x,y,z = puma.get_pose()# get&print pose
     print(f"\noutput:\n{x} {y} {z} {psi} {theta} {phi}")
     for i in range(3):
         print()
@@ -43,7 +43,7 @@ def main():
     matrix = np.array(matrix)
     print(matrix)
     
-    puma.dh_inverse_kinematics(matrix)
+    puma.dh_inverse_kinematics(matrix) # inverse kinematics
 
 
 if __name__ == '__main__':
