@@ -23,7 +23,7 @@ class Joint: # joint class
     def set_theta(self, t)->None: # set theta
         self[3] = t
 
-    def kinamatics(self): # calculate dh matrix
+    def kinamatics(self): # calculate joint's transformation matrix
         c = lambda t: np.cos(t)
         s = lambda t: np.sin(t)
         t = self._params[3]
@@ -36,7 +36,7 @@ class Joint: # joint class
                 [0, 0, 0, 1]]
         self.dh_matrix = np.array(matrix)
     
-    def iv_dh_matrix(self): # calculate inverse dh matrix
+    def iv_dh_matrix(self): # calculate inverse transformation matrix
         return np.linalg.inv(self.dh_matrix)
 
 

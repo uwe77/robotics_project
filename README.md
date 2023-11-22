@@ -52,4 +52,17 @@ The method iteratively explores possible joint angles for the robot to reach the
 This process involves solving trigonometric equations and considering multiple solutions due to the nature of trigonometric functions. \
 The calculated joint angles are then printed as a result.
 
-## Main Script Explanation
+## Program running process
+<img src="./images/running_process.jpg"/>
+
+## Mathematical operations instructions
+### Forward kinematric
+every times joint's theta got change it'll run Joint::kinamatics() \
+then the joint will update his transform matrix with the follolwing image. \
+<img src="./images/dh_matrix.jpg"/> 
+### Inverse kinematric
+when input by Cartesian matrix we need to get each joint's theta. \
+it'll run puma560::dh_inverse_kinematics() \
+then the thetas' equation need to be pre-program with the following equations \
+<img src="./images/t1-3.jpg"/> \
+<img src="./images/t4-6.jpg"/> 
