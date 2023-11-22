@@ -30,14 +30,23 @@ then the output should be... \
 <img src="./images/q2_output.png"/>
 
 ## Program Architecture Explanation
-> Program Flow \
-The program flow revolves around the classes defined in robot_model.py. Specifically, the Joint class encapsulates the parameters of a robotic joint, such as the Denavit-Hartenberg (DH) parameters and the joint angle range. The puma560 class, representing the PUMA 560 robot, initializes six instances of the Joint class to model its joints. The crucial aspect of the program's flow is the calculation of forward and inverse kinematics.
+### Program Flow
+The program flow revolves around the classes defined in robot_model.py. \
+Specifically, the Joint class encapsulates the parameters of a robotic joint, such as the Denavit-Hartenberg (DH) parameters and the joint angle range. \
+The puma560 class, representing the PUMA 560 robot, initializes six instances of the Joint class to model its joints. \
+The crucial aspect of the program's flow is the calculation of forward and inverse kinematics.
 
 ### Core Code Explanation
-> Forward Kinematics
-The kinematics method in the Joint class computes the Denavit-Hartenberg (DH) transformation matrix for the corresponding joint. It uses trigonometric functions (cosine and sine) to calculate the elements of the transformation matrix based on the joint parameters (theta, alpha, a, and d). The resulting transformation matrix represents the position and orientation of the joint in the robot's coordinate system.
+#### Forward Kinematics
+The kinematics method in the Joint class computes the Denavit-Hartenberg (DH) transformation matrix for the corresponding joint. \
+It uses trigonometric functions (cosine and sine) to calculate the elements of the transformation matrix based on the joint parameters (theta, alpha, a, and d). \
+The resulting transformation matrix represents the position and orientation of the joint in the robot's coordinate system.
 
-> Inverse Kinematics
-The dh_inverse_kinematics method in the puma560 class implements an inverse kinematics solution. It takes a desired end-effector pose in the form of a 4x4 homogeneous transformation matrix (matrix). The method iteratively explores possible joint angles for the robot to reach the specified pose. This process involves solving trigonometric equations and considering multiple solutions due to the nature of trigonometric functions. The calculated joint angles are then printed as a result.
+#### Inverse Kinematics
+The dh_inverse_kinematics method in the puma560 class implements an inverse kinematics solution. \
+It takes a desired end-effector pose in the form of a 4x4 homogeneous transformation matrix (matrix). \
+The method iteratively explores possible joint angles for the robot to reach the specified pose. \
+This process involves solving trigonometric equations and considering multiple solutions due to the nature of trigonometric functions. \
+The calculated joint angles are then printed as a result.
 
 ## Main Script Explanation
