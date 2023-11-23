@@ -47,4 +47,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    ct = "y"
+    while ct == "y":
+        main()
+        ct = input("continue y/n:")
