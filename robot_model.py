@@ -102,27 +102,28 @@ class puma560(): # system ZYZ
         times = 1
         for j in [1,-1]: # for theta3's two solutions
             for i in [1,-1]: # for theta1's two solutions
-                print(f"======times:{times}========")
-                # theta1's equation
-                self[0] = np.arctan2(Py, Px) - np.arctan2(self.joints[2][0], i*np.sqrt(Px**2 + Py**2 - self.joints[2][0]**2))
-                #                                                            +-
-                # theta3's equation
-                M = (Px**2 + Py**2 + Pz**2 - self.joints[1][1]**2 - self.joints[2][1]**2 - self.joints[2][0]**2 - self.joints[3][0]**2)/(2*self.joints[1][1])
-                self[2] = np.arctan2(M, j*np.sqrt(self.joints[2][1]**2 + self.joints[3][0]**2 - M**2)) - np.arctan2(self.joints[2][1], self.joints[3][0])
-                #                       +-
-                # theta2's equation
-                self[1] = np.arctan2(self.joints[3][0] + self.joints[1][1]*s(self[2]), self.joints[2][1]+self.joints[1][1]*c(self[2])) - np.arctan2(Pz, c(self[0])*Px + s(self[0])*Py) - self[2]
-                # theta4's equation
-                self[3] = np.arctan2(self.get_iv_trans_(3)[1]@T[:,2], self.get_iv_trans_(3)[0]@T[:,2])
-                # theta5's equation
-                self[4] = np.arctan2(self.get_iv_trans_(4)[0]@T[:,2], -self.get_iv_trans_(4)[1]@T[:,2])
-                # theta6's equation
-                self[5] = np.arctan2(self.get_iv_trans_(4)[2]@T[:,0], self.get_iv_trans_(4)[2]@T[:,1])
-                print("Corresponding Variable (theta1, theta2, theta3, theta4, theta5, theta6)")
-                for t in range(len(self.joints)):
-                    print(self[t]*180/pi, end=" ")
-                print()
-                times += 1
+                for k in [0, 1]: # for theta4's two solutions
+                    print(f"======times:{times}========")
+                    # theta1's equation
+                    self[0] = np.arctan2(Py, Px) - np.arctan2(self.joints[2][0], i*np.sqrt(Px**2 + Py**2 - self.joints[2][0]**2))
+                    #                                                            +-
+                    # theta3's equation
+                    M = (Px**2 + Py**2 + Pz**2 - self.joints[1][1]**2 - self.joints[2][1]**2 - self.joints[2][0]**2 - self.joints[3][0]**2)/(2*self.joints[1][1])
+                    self[2] = np.arctan2(M, j*np.sqrt(self.joints[2][1]**2 + self.joints[3][0]**2 - M**2)) - np.arctan2(self.joints[2][1], self.joints[3][0])
+                    #                       +-
+                    # theta2's equation
+                    self[1] = np.arctan2(self.joints[3][0] + self.joints[1][1]*s(self[2]), self.joints[2][1]+self.joints[1][1]*c(self[2])) - np.arctan2(Pz, c(self[0])*Px + s(self[0])*Py) - self[2]
+                    # theta4's equation
+                    self[3] = np.arctan2(self.get_iv_trans_(3)[1]@T[:,2], self.get_iv_trans_(3)[0]@T[:,2]) + k*pi
+                    # theta5's equation
+                    self[4] = np.arctan2(self.get_iv_trans_(4)[0]@T[:,2], -self.get_iv_trans_(4)[1]@T[:,2])
+                    # theta6's equation
+                    self[5] = np.arctan2(self.get_iv_trans_(4)[2]@T[:,0], self.get_iv_trans_(4)[2]@T[:,1])
+                    print("Corresponding Variable (theta1, theta2, theta3, theta4, theta5, theta6)")
+                    for t in range(len(self.joints)):
+                        print(self[t]*180/pi, end=" ")
+                    print()
+                    times += 1
 
     def get_euler(self): # get euler angle
         self.theta = np.arccos(self.dh_trans[2,2]) * 180/pi
