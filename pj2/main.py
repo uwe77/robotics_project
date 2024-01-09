@@ -39,6 +39,176 @@ def pos(x1, x2, x3, x4, x5, x6):
     z = T1[2,3]*100
     return x,y,z
 
+def from_2_end(start, end):
+    # Extract columns from A and B
+    n1 = start[:, 0]
+    o1 = start[:, 1]
+    a1 = start[:, 2]
+    p1 = start[:, 3]
+
+    n2 = end[:, 0]
+    o2 = end[:, 1]
+    a2 = end[:, 2]
+    p2 = end[:, 3]
+    
+    # Find solution for x, y, z
+    x = np.dot(n1, (p2-p1))
+    y = np.dot(o1, (p2-p1))
+    z = np.dot(a1, (p2-p1))
+
+    # Find solution for psi
+    psi = atan2(dot(o1, a2), dot(o1, n2))
+    
+    # Find solution for theta
+    theta = atan2(sqrt((n1@a2)**2 + (o1@a2)**2), a1@a2)
+
+    # Find solution for phi
+    s_psi = sin(psi)
+    c_psi = cos(psi)
+    v_theta = 1 - cos(theta)
+    s_theta = sin(theta)
+    c_theta = cos(theta)
+    s_phi = -s_psi * c_psi * v_theta * (n1@n2) + ((c_psi)**2 * v_theta + c_theta) * (o1@n2) - s_psi * s_theta * (a1@n2)
+    c_phi = -s_psi * c_psi * v_theta * (n1@o2) + ((c_psi)**2 * v_theta + c_theta) * (o1@o2) - s_psi * s_theta * (a1@o2)
+    phi = atan2(s_phi, c_phi)
+    state = {'x':x,
+             'y':y,
+             'z':z,
+             'psi':psi,
+             'theta':theta,
+             'phi':phi}
+    return state
+
+def linear_trajectory(T, tsample, tacc, start, t1, t2, x, y, z, psi, theta, phi):
+    # Define time vector
+    t  = np.arange(0.0, 1.0, tsample)
+    len_traj = t.shape[0]
+
+    # Preallocate trajectory matrices
+    trans_traj = np.zeros((4, 4, len_traj))
+    pos_traj = np.zeros((3, len_traj))
+    ori_traj = np.zeros((3, len_traj))
+
+    for i in range(t.shape[0]):
+        r = t[i] / T
+        r_x = x * r
+        r_y = y * r
+        r_z = z * r
+        r_theta = theta * r
+        r_phi = phi * r
+
+        s_psi = sin(psi)
+        c_psi = cos(psi)
+        v_r_theta = 1 - cos(r_theta)
+        s_r_theta = sin(r_theta)
+        c_r_theta = cos(r_theta)
+        s_r_phi = sin(r_phi)
+        c_r_phi = cos(r_phi)
+
+        Tr = np.array([[ 1, 0, 0, r_x],
+                        [0, 1, 0, r_y],
+                        [0, 0, 1, r_z],
+                        [0, 0, 0, 1  ]])
+
+        Ra = np.array([[ s_psi**2 * v_r_theta + c_r_theta, -s_psi * c_psi * v_r_theta     , c_psi * s_r_theta, 0],
+                        [-s_psi * c_psi * v_r_theta     , c_psi**2 * v_r_theta + c_r_theta, s_psi * s_r_theta, 0],
+                        [-c_psi * s_r_theta             , -s_psi * s_r_theta             , c_r_theta        , 0],
+                        [0                              , 0                              , 0                , 1]])
+
+        Ro = np.array([[ c_r_phi, -s_r_phi,  0, 0],
+                        [s_r_phi, c_r_phi ,  0, 0],
+                        [0      , 0       ,  1, 0],
+                        [0      , 0       ,  0, 1]])
+
+        Dr = Tr@Ra@Ro
+        trans_traj[:, :, i] = start@Dr
+        pos_traj[:, i] = trans_traj[:3, 3, i]
+        ori_traj[:, i] = trans_traj[:3, 2, i]
+        state = {'trans_traj':trans_traj,
+                 'pos_traj':pos_traj,
+                 'ori_traj':ori_traj,
+                 'len_traj':len_traj}
+        return state
+
+def trans_trajectory(T, tsample, tacc, start, t_start, t_end, xA, yA, zA, psiA, thetaA, phiA, xC, yC, zC, psiC, thetaC, phiC):
+    # Define time vector
+    t = np.arange(t_start, t_end, tsample)
+    len_traj = t.shape[0]
+
+    # Preallocate trajectory matrices
+    trans_traj = np.zeros((4, 4, len_traj))
+    pos_traj = np.zeros((3, len_traj))
+    ori_traj = np.zeros((3, len_traj))
+
+    for i in range(len_traj):
+        h = (t[i] + tacc) / (2 * tacc)
+        dx = ((xC * (tacc / T) + xA) * (2 - h) * h**2 - 2 * xA) * h + xA
+        dy = ((yC * (tacc / T) + yA) * (2 - h) * h**2 - 2 * yA) * h + yA
+        dz = ((zC * (tacc / T) + zA) * (2 - h) * h**2 - 2 * zA) * h + zA
+        dpsi = (psiC - psiA) * h + psiA
+        dtheta = ((thetaC * (tacc / T) + thetaA) * (2 - h) * h**2 - 2 * thetaA) * h + thetaA
+        dphi = ((phiC * (tacc / T) + phiA) * (2 - h) * h**2 - 2 * phiA) * h + phiA
+
+        s_psi = sin(dpsi)
+        c_psi = cos(dpsi)
+        v_theta = 1 - cos(dtheta)
+        s_theta = sin(dtheta)
+        c_theta = cos(dtheta)
+        s_phi = sin(dphi)
+        c_phi = cos(dphi)
+
+        Tr = np.array([[ 1, 0, 0, dx],
+                        [0, 1, 0, dy],
+                        [0, 0, 1, dz],
+                        [0, 0, 0, 1 ]])
+
+        Ra = np.array([[ s_psi**2 * v_theta + c_theta  , -s_psi * c_psi * v_theta     , c_psi * s_theta, 0],
+                        [-s_psi * c_psi * v_theta     , c_psi**2 * v_theta + c_theta  , s_psi * s_theta, 0],
+                        [-c_psi * s_theta             , -s_psi * s_theta             , c_theta        , 0],
+                        [ 0                           , 0                            , 0              , 1]])
+
+        Ro = np.array([[ c_phi, -s_phi   ,  0, 0],
+                        [s_phi, c_phi    ,  0, 0],
+                        [0     , 0       ,  1, 0],
+                        [0     , 0       ,  0, 1]])
+
+        Dr = Tr@Ra @Ro
+        trans_traj[:, :, i] = start * Dr
+        pos_traj[:, i] = trans_traj[:3, 3, i]
+        ori_traj[:, i] = trans_traj[:3, 2, i]
+    
+    state = {'trans_traj':trans_traj,
+             'pos_traj':pos_traj,
+             'ori_traj':ori_traj,
+             'len_traj':len_traj}
+    return state
+
+def draw_cartesian(mode, t, c):
+    if mode == 'value':
+        title_plot = 'Position of xyz'
+        yl = 'Position(cm)'
+    elif mode == 'speed':
+        title_plot = 'Velocity of xyz'
+        yl = 'Velocity(cm/s)'
+    elif mode == 'acc':
+        title_plot = 'Accleration of xyz'
+        yl = 'Acceleration(cm/s²)'
+    else:
+        title_plot = ''
+        yl = ''
+        print('Wrong type !!!')
+    
+    #plot joint angle
+    fig, ax = plt.subplots(3,2,figsize=(10, 8))
+    for sub in range(3):
+        ax[sub//2][sub%2].plot(c[sub].shape[1], c[sub] , color='blue')
+        ax[sub//2][sub%2].set_title(f"{sub+1}")
+        ax[sub//2][sub%2].set_xlabel('time (sec)')
+        ax[sub//2][sub%2].set_ylabel(yl)
+    plt.title(title_plot)
+    plt.tight_layout()
+    plt.show()
+
 def joint_move():
     P1 = np.array([-100.4577302516985, 70.61077411145472, 48.39965042684975, -5.957243485063329e-15, 60.98957546169554, 29.274572620257292])
     P2 = np.array([-52.11582808501224, -1.435829653814516, 30.20601749686518, 58.616557254148674, 11.478084623624586, 3.2858694580173395])
@@ -61,15 +231,15 @@ def joint_move():
     ca = np.zeros((3, len(t)))
 
     for i, v in enumerate(t):
-        if v <= (T-tacc):
+        if v <= (T-tacc): # A to A'
             j[:, i]  = P1 + (L1*v)
             js[:, i] = L1
             ja[:, i] = 0
-        elif v >= (T + tacc):
+        elif v >= (T + tacc): # A' to B
             j[:, i]  = P2 + (L2*(v-T))
             js[:, i] = L2
             ja[:, i] = 0
-        else:
+        else: # B' to C
             h = (v - T + tacc) / (2*tacc)
             j[:, i]  = ((dP3 * tacc / T + dP2)*(2-h)*(h**2) - 2*dP2)*h + P2 + dP2
             js[:, i] = ((dP3 * tacc / T + dP2)*(1.5-h)*2*(h**2) - dP2) / tacc
@@ -131,260 +301,78 @@ def joint_move():
 
 
 def cartesian_move():
+    # linear A to A'
+    A_B = from_2_end(A, B)
+    A_ = linear_trajectory(T, tsample, tacc, A, 0, T-tacc, A_B['x'], A_B['y'], A_B['z'], A_B['psi'], A_B['theta'], A_B['phi'])
+    # transition A' to B'
+    A2 = A_['trans_traj'][:,:, A_['len_traj']-1]
+    B_A2 = from_2_end(B, A2)
+
+    B_C = from_2_end(B, C)
+
+    if abs(B_C['psi']-B_A2['psi']) > pi/2:
+        B_A2['psi'] += pi
+        B_A2['theta'] *= -1
     
-    nA = np.array([A[0,0], A[1,0], A[2,0]])
-    nA = nA.reshape(-1,1)
-    oA = np.array([A[0,1], A[1,1], A[2,1]])
-    oA = oA.reshape(-1,1)
-    aA = np.array([A[0,2], A[1,2], A[2,2]])
-    aA = aA.reshape(-1,1)
-    pA = np.array([A[0,3], A[1,3], A[2,3]])
-    pA = pA.reshape(-1,1)
+    A2_B2 = trans_trajectory(T, tsample, tacc, B, -tacc+tsample, tacc-tsample, B_A2['x'], B_A2['y'], B_A2['z'], B_A2['psi'], B_A2['theta'], B_A2['phi'], B_C['x'], B_C['y'], B_C['z'], B_C['psi'], B_C['theta'], B_C['phi'])
+    
+    # linear B' to C
+    B2_C = linear_trajectory(T, tsample, tacc, B, tacc, T, B_C['x'], B_C['y'], B_C['z'], B_C['psi'], B_C['theta'], B_C['phi'])
+    A_['pos_traj'] *= 100
+    A2_B2['pos_traj'] *= 100
+    B2_C['pos_traj'] *= 100
 
-    nB = np.array([B[0,0], B[1,0], B[2,0]])
-    nB = nB.reshape(-1,1)
-    oB = np.array([B[0,1], B[1,1], B[2,1]])
-    oB = oB.reshape(-1,1)
-    aB = np.array([B[0,2], B[1,2], B[2,2]])
-    aB = aB.reshape(-1,1)
-    pB = np.array([B[0,3], B[1,3], B[2,3]])
-    pB = pB.reshape(-1,1)
+    # plot position
+    t = np.arange(0.0, 1.0, tsample)
 
-    nC = np.array([C[0,0], C[1,0], C[2,0]])
-    nC = nC.reshape(-1,1)
-    oC = np.array([C[0,1], C[1,1], C[2,1]])
-    oC = oC.reshape(-1,1)
-    aC = np.array([C[0,2], C[1,2], C[2,2]])
-    aC = aC.reshape(-1,1)
-    pC = np.array([C[0,3], C[1,3], C[2,3]])
-    pC = pC.reshape(-1,1)
+    # cx = np.array(A_['pos_traj'][0, :], A2_B2['pos_traj'][0, :], B2_C['pos_traj'][0, :])
+    cx = np.hstack((A_['pos_traj'][0, :], A2_B2['pos_traj'][0, :], B2_C['pos_traj'][0, :]))
+    cy = np.hstack((A_['pos_traj'][1, :], A2_B2['pos_traj'][1, :], B2_C['pos_traj'][1, :]))
+    cz = np.hstack((A_['pos_traj'][2, :], A2_B2['pos_traj'][2, :], B2_C['pos_traj'][2, :]))
+    c = np.array([cx, cy, cz])
 
-    x = dot(nA.T, (pB - pA))
-    y = dot(oA.T, (pB - pA))
-    z = dot(aA.T, (pB - pA))
-    psi = atan2(dot(oA.T, aB), dot(nA.T, aB))
-    temp = sqrt(dot(nA.T, aB)**2 + dot(oA.T, aB)**2)
-    theta = atan2(temp, dot(aA.T, aB))
-    V_r_theta = 1-cos(theta)
-    sin_phi = -sin(psi)*cos(psi)*V_r_theta*dot(nA.T, nB) + (cos(psi)**2*V_r_theta+cos(theta))*dot(oA.T, nB) - sin(psi)*sin(theta)*dot(aA.T, nB)
-    cos_phi = -sin(psi)*cos(psi)*V_r_theta*dot(nA.T, oB) + (cos(psi)**2*V_r_theta+cos(theta))*dot(oA.T, oB) - sin(psi)*sin(theta)*dot(aA.T, oB)
-    phi = atan2(sin_phi, cos_phi)
+    draw_cartesian('value', t, c)
 
-    # -0.5~-0.2 A~A'
-    # pA_B = np.empty([4, 4])
-    pA_B = []
-    xA_B = []
-    yA_B = []
-    zA_B = []
+    # Create figure for cartesian velocity
+#     dt = t(2:length(t));
+#     dcx = (cx(2:end) - cx(1:end-1)) / tsample;
+#     dcy = (cy(2:end) - cy(1:end-1)) / tsample;
+#     dcz = (cz(2:end) - cz(1:end-1)) / tsample;
+#     dc = [dcx; dcy; dcz];
+#     disp(['3 elements of dcx: ', num2str(dcx(len_traj_AA2-1:len_traj_AA2+1))])
 
-    for i,v in enumerate(t1):
-        h=(v+T)/T
-        dx=float(x*h)
-        dy=float(y*h)
-        dz=float(z*h)
-        dsi=psi
-        dtheta=theta*h
-        dphi=phi*h
+#     draw_cartesian('speed', dt, dc);
 
-        S_psi=sin(psi)
-        C_psi=cos(psi)
-        S_theta=sin(dtheta)
-        C_theta=cos(dtheta)
-        V_theta=1-C_theta
-        S_phi=sin(dphi)
-        C_phi=cos(dphi)
-        Tr = np.array([[1, 0, 0, dx], [0, 1, 0, dy], [0, 0, 1, dz], [0, 0, 0, 1]])
-        Rar = np.array([[S_psi**2*V_theta+C_phi, -S_psi*C_psi*V_theta,C_psi*S_phi, 0],
-                        [-S_psi*C_psi*V_theta,C_psi**2*V_theta+C_phi, S_psi*S_phi, 0],
-                        [-C_psi*S_phi, -S_psi*S_phi, C_phi, 0],
-                        [0, 0, 0, 1]])
-        Ror = np.array([[C_theta, -S_theta, 0, 0],
-                        [S_theta, C_theta, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
-        Dr = multi_dot([Tr,Rar,Ror])
-        # print(dot(a, Dr), " ", i)
-        pA_B.append(dot(A, Dr))
-        # print(pA_B, " ", i)
-        xA_B.append(pA_B[i][0][3])
-        yA_B.append(pA_B[i][1][3])
-        zA_B.append(pA_B[i][2][3]) 
 
-    #-0.2~0.2 A'~C'
-    a2 = pA_B[-1]
-    nA2 = np.array([a2[0,0], a2[1,0], a2[2,0]])
-    nA2 = nA2.reshape(-1,1)
-    oA2 = np.array([a2[0,1], a2[1,1], a2[2,1]])
-    oA2 = oA2.reshape(-1,1)
-    aA2 = np.array([a2[0,2], a2[1,2], a2[2,2]])
-    aA2 = aA2.reshape(-1,1)
-    pA2 = np.array([a2[0,3], a2[1,3], a2[2,3]])
-    pA2 = pA2.reshape(-1,1)
+#     % Create figure for cartesian accelerations
+#     dt2 = t(3:length(t));
+#     dc2x = (dcx(2:end) - dcx(1:end-1)) / tsample;
+#     dc2y = (dcy(2:end) - dcy(1:end-1)) / tsample;
+#     dc2z = (dcz(2:end) - dcz(1:end-1)) / tsample;
+#     dc2 = [dc2x; dc2y; dc2z];
 
-    xA = dot(nB.T, (pA2-pB))
-    yA = dot(oB.T, (pA2-pB))
-    zA = dot(aB.T, (pA2-pB))
-    psiA = atan2(dot(oB.T, aA2), dot(nB.T, aA2))
-    thetaA = atan2(sqrt((dot(nB.T, aA2))**2 + dot(oB.T, aA2)**2), dot(aB.T, aA2))
-    SphiA = -sin(psiA)*cos(psiA)*(1-cos(thetaA))*dot(nB.T, nA2)+((cos(psiA))**2*(1-cos(thetaA))+cos(thetaA))*dot(oB.T, nA2)-sin(psiA)*sin(thetaA)*dot(aB.T, nA2)
-    CphiA = -sin(psiA)*cos(psiA)*(1-cos(thetaA))*dot(nB.T, oA2)+((cos(psiA))**2*(1-cos(thetaA))+cos(thetaA))*dot(oB.T, oA2)-sin(psiA)*sin(thetaA)*dot(aB.T, oA2)
-    phiA = atan2(SphiA,CphiA)
+#     draw_cartesian('acc', dt2, dc2);
 
-    xC = dot(nB.T, (pC-pB))
-    yC = dot(oB.T, (pC-pB))
-    zC = dot(aB.T, (pC-pB))
-    psiC = atan2(dot(oB.T, aC), dot(nB.T, aC))
-    thetaC = atan2(sqrt(dot(nB.T, aC))**2 + dot(oB.T, aC)**2, dot(aB.T, aC))
-    SphiC = -sin(psiC)*cos(psiC)*(1-cos(thetaC))*dot(nB.T, nC)+((cos(psiC))**2*(1-cos(thetaC))+cos(thetaC))*dot(oB.T, nC)-sin(psiC)*sin(thetaC)*dot(aB.T, nC)
-    CphiC = -sin(psiC)*cos(psiC)*(1-cos(thetaC))*dot(nB.T, oC)+((cos(psiC))**2*(1-cos(thetaC))+cos(thetaC))*dot(oB.T, oC)-sin(psiC)*sin(thetaC)*dot(aB.T, oC)
-    phiC=atan2(SphiC,CphiC)
 
-    if abs(psiC-psiA)>pi/2:
-        psiA = psiA+pi
-        thetaA = -thetaA
+#     % Create figure for cartesian path
+#     title_plot = '3D path of cartesian space planning';
+#     pos = c;
+#     ori = [ori_traj_AA2(1, :), ori_traj_A2B2(1, :), ori_traj_B2C(1, :);
+#          ori_traj_AA2(2, :), ori_traj_A2B2(2, :), ori_traj_B2C(2, :);
+#          ori_traj_AA2(3, :), ori_traj_A2B2(3, :), ori_traj_B2C(3, :)];
+    
+#     draw_cartesian_path(title_plot, pos, ori);
 
-    #path planing
-    p_B = []
-    x_B = []
-    y_B = []
-    z_B = []
-    for i,v in enumerate(t2):
-        h=(v+tacc)/(2*tacc)
-        dx_B=float(((xC*tacc/T+xA)*(2-h)*h**2-2*xA)*h+xA)
-        dy_B=float(((yC*tacc/T+yA)*(2-h)*h**2-2*yA)*h+yA)
-        dz_B=float(((zC*tacc/T+zA)*(2-h)*h**2-2*zA)*h+zA)
-        dpsi_B=float((psiC-psiA)*h+psiA)
-        dtheta_B=float(((thetaC*tacc/T+thetaA)*(2-h)*h**2-2*thetaA)*h+thetaA)
-        dphi_B=float(((phiC*tacc/T+phiA)*(2-h)*h**2-2*phiA)*h+phiA)
+# else
+#     disp('Invalid mode. Please enter ''j'' or ''c''.');
 
-        S_psi=sin(dpsi_B)
-        C_psi=cos(dpsi_B)
-        S_theta=sin(dtheta_B)
-        C_theta=cos(dtheta_B)
-        V_theta=1-C_theta
-        S_phi=sin(dphi_B)
-        C_phi=cos(dphi_B)
-
-        Tr = np.array([[1,0,0,dx_B],
-                        [0,1,0,dy_B],
-                        [0,0,1,dz_B],
-                        [0,0,0,1]])
-        Rar = np.array([[S_psi**2*V_theta+C_phi, -S_psi*C_psi*V_theta,C_psi*S_phi, 0],
-                        [-S_psi*C_psi*V_theta,C_psi**2*V_theta+C_phi, S_psi*S_phi, 0],
-                        [-C_psi*S_phi, -S_psi*S_phi, C_phi, 0],
-                        [0, 0, 0, 1]])
-        Ror = np.array([[C_theta, -S_theta, 0, 0],
-                        [S_theta, C_theta, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
-        Dr_B = multi_dot([Tr,Rar,Ror])
-
-        p_B.append(dot(B, Dr_B))
-        x_B.append(p_B[i][0][3])
-        y_B.append(p_B[i][1][3])
-        z_B.append(p_B[i][2][3]) 
-
-    # 0.2~0.5 C'~C
-    p_C = []
-    x_C = []
-    y_C = []
-    z_C = []
-    for i,v in enumerate(t3):
-        h=v/0.5
-        dx_C=float(xC*h)
-        dy_C=float(yC*h)
-        dz_C=float(zC*h)
-        dpsi_C=psiC
-        dtheta_C=thetaC*h
-        dphi_C=phiC*h
-
-        S_psi=sin(dpsi_C)
-        C_psi=cos(dpsi_C)
-        S_theta=sin(dtheta_C)
-        C_theta=cos(dtheta_C)
-        V_theta=1-C_theta
-        S_phi=sin(dphi_C)
-        C_phi=cos(dphi_C)
-
-        Tr = np.array([[1,0,0,dx_C],
-                        [0,1,0,dy_C],
-                        [0,0,1,dz_C],
-                        [0,0,0,1]])
-        Rar = np.array([[S_psi**2*V_theta+C_phi, -S_psi*C_psi*V_theta,C_psi*S_phi, 0],
-                        [-S_psi*C_psi*V_theta,C_psi**2*V_theta+C_phi, S_psi*S_phi, 0],
-                        [-C_psi*S_phi, -S_psi*S_phi, C_phi, 0],
-                        [0, 0, 0, 1]])
-        Ror = np.array([[C_theta, -S_theta, 0, 0],
-                        [S_theta, C_theta, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
-        Dr_C = multi_dot([Tr,Rar,Ror])
-
-        p_C.append(dot(B, Dr_C))
-        x_C.append(p_C[i][0][3])
-        y_C.append(p_C[i][1][3])
-        z_C.append(p_C[i][2][3]) 
-
-    #3d
-    ax = plt.figure().add_subplot(projection='3d')
-    ax.plot(np.concatenate((xA_B, x_B, x_C), axis=None), np.concatenate((yA_B, y_B, y_C), axis=None), np.concatenate((zA_B, z_B, z_C), axis=None), label='3D path of Cartesian Move')
-    ax.plot(A[0,3],A[1,3],A[2,3], marker='o', markersize=5)
-    ax.plot(B[0,3],B[1,3],B[2,3], marker='o', markersize=5)
-    ax.plot(C[0,3],C[1,3],C[2,3], marker='o', markersize=15)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    plt.show()
-
-    #xyz position
-    Xconcate = np.concatenate((xA_B, x_B, x_C), axis=None)
-    Yconcate = np.concatenate((yA_B, y_B, y_C), axis=None)
-    Zconcate = np.concatenate((zA_B, z_B, z_C), axis=None)
-    _position = [Xconcate, Yconcate, Zconcate]
-    fig, ax = plt.subplots(3,1,figsize=(10, 8))
-    for sub in range(3):
-        ax[sub].plot(t[:], _position[sub] , color='blue')
-        ax[sub].set_title(f"Position {sub+1}")
-        ax[sub].set_xlabel('time (sec)')
-        ax[sub].set_ylabel('position(cm)')
-    plt.title("Position")
-    plt.tight_layout()
-    plt.show()
-
-    #xyz velocity
-    dX = np.diff(Xconcate) / tsample
-    dY = np.diff(Yconcate) / tsample
-    dZ = np.diff(Xconcate) / tsample
-    _dv = [dX, dY, dZ]
-    fig, ax = plt.subplots(3,1,figsize=(10, 8))
-    for sub in range(3):
-        ax[sub].plot(t[1:], _dv[sub] , color='blue')
-        ax[sub].set_title(f"Velocity {sub+1}")
-        ax[sub].set_xlabel('time (sec)')
-        ax[sub].set_ylabel('velocity(cm/s)')
-    plt.title("Velocity")
-    plt.tight_layout()
-    plt.show()
-
-    #xyz acceleration
-    ddX = np.diff(dX) / tsample
-    ddY = np.diff(dY) / tsample
-    ddZ = np.diff(dZ) / tsample
-    _da = [ddX, ddY, ddZ]
-    fig, ax = plt.subplots(3,1,figsize=(10, 8))
-    for sub in range(3):
-        ax[sub].plot(t[2:], _da[sub] , color='blue')
-        ax[sub].set_title(f"acceleration {sub+1}")
-        ax[sub].set_xlabel('time (sec)')
-        ax[sub].set_ylabel('acceleration(cm/s^2)')
-    plt.title("acceleration")
-    plt.tight_layout()
-    plt.show()
+    pass
 
 def main():
     puma = puma560() # create a puma560 object
     # joint_move()
     cartesian_move()
+    # cartesian_move()
 
 if __name__ == '__main__':
     main()
