@@ -185,10 +185,10 @@ def trans_trajectory(T, tsample, tacc, start, t_start, t_end, xA, yA, zA, psiA, 
 
 def draw_cartesian(mode, t, c):
     if mode == 'value':
-        title_plot = 'Position of xyz'
+        title_plot = '   Position of xyz'
         yl = 'Position(cm)'
     elif mode == 'speed':
-        title_plot = 'Velocity of xyz'
+        title_plot = '   Velocity of xyz'
         yl = 'Velocity(cm/s)'
     elif mode == 'acc':
         title_plot = 'Accleration of xyz'
@@ -199,13 +199,13 @@ def draw_cartesian(mode, t, c):
         print('Wrong type !!!')
     
     #plot joint angle
-    fig, ax = plt.subplots(3,2,figsize=(10, 8))
+    fig, ax = plt.subplots(3,figsize=(10, 8))
     for sub in range(3):
-        ax[sub//2][sub%2].plot(c[sub].shape[1], c[sub] , color='blue')
-        ax[sub//2][sub%2].set_title(f"{sub+1}")
-        ax[sub//2][sub%2].set_xlabel('time (sec)')
-        ax[sub//2][sub%2].set_ylabel(yl)
-    plt.title(title_plot)
+        ax[sub].plot(range(c[sub].shape[0]), c[sub] , color='blue')
+        ax[sub].set_title(f"{title_plot[:-4]} {title_plot[15+sub]}")
+        ax[sub].set_xlabel('time (sec)')
+        ax[sub].set_ylabel(yl)
+    # plt.title(title_plot)
     plt.tight_layout()
     plt.show()
 
@@ -334,24 +334,23 @@ def cartesian_move():
     draw_cartesian('value', t, c)
 
     # Create figure for cartesian velocity
-#     dt = t(2:length(t));
-#     dcx = (cx(2:end) - cx(1:end-1)) / tsample;
-#     dcy = (cy(2:end) - cy(1:end-1)) / tsample;
-#     dcz = (cz(2:end) - cz(1:end-1)) / tsample;
-#     dc = [dcx; dcy; dcz];
-#     disp(['3 elements of dcx: ', num2str(dcx(len_traj_AA2-1:len_traj_AA2+1))])
+    dt = t[2:t.shape[0]]
+    dcx = (cx[1:] - np.append(np.zeros((1)) ,cx[:-2])) / tsample
+    dcy = (cy[1:] - np.append(np.zeros((1)) ,cy[:-2])) / tsample
+    dcz = (cz[1:] - np.append(np.zeros((1)) ,cz[:-2])) / tsample
+    dc = np.array([dcx, dcy, dcz])
 
-#     draw_cartesian('speed', dt, dc);
+    draw_cartesian('speed', dt, dc)
 
 
-#     % Create figure for cartesian accelerations
-#     dt2 = t(3:length(t));
-#     dc2x = (dcx(2:end) - dcx(1:end-1)) / tsample;
-#     dc2y = (dcy(2:end) - dcy(1:end-1)) / tsample;
-#     dc2z = (dcz(2:end) - dcz(1:end-1)) / tsample;
-#     dc2 = [dc2x; dc2y; dc2z];
+#     Create figure for cartesian accelerations
+    dt2 = t[3:t.shape[0]]
+    dc2x = (dcx[1:] - dcx[:-1]) / tsample
+    dc2y = (dcy[1:] - dcy[:-1]) / tsample
+    dc2z = (dcz[1:] - dcz[:-1]) / tsample
+    dc2 = np.array([dc2x, dc2y, dc2z])
 
-#     draw_cartesian('acc', dt2, dc2);
+    draw_cartesian('acc', dt2, dc2)
 
 
 #     % Create figure for cartesian path
@@ -365,8 +364,6 @@ def cartesian_move():
 
 # else
 #     disp('Invalid mode. Please enter ''j'' or ''c''.');
-
-    pass
 
 def main():
     puma = puma560() # create a puma560 object
