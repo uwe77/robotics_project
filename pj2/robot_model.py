@@ -67,6 +67,7 @@ class puma560(): # system ZYZ
         value = np.arctan2(np.sin(value), np.cos(value)) # normalize angle
         if self.joints[index].range < abs(value)*180/pi: # check range
             print(f"theta{index+1} is out of range! range: {self.joints[index]}, value: {value*180/pi}")
+        # else:
         self.joints[index].set_theta(value) # set theta
         self.joints[index].kinamatics() # calculate dh matrix
 
@@ -100,6 +101,7 @@ class puma560(): # system ZYZ
         Py = T[1, 3]
         Pz = T[2, 3]
         times = 1
+        saved_angles = []
         for j in [1,-1]: # for theta3's two solutions
             for i in [1,-1]: # for theta1's two solutions
                 for k in [0, 1]: # for theta4's two solutions
