@@ -138,7 +138,7 @@ def trans_trajectory(T, tsample, tacc, start, t1, t2, A:dict, C:dict):
     ori_traj = np.zeros((len_traj, 3))
 
     for i, v in enumerate(t):
-        h = (v + tacc) / (2 * tacc) # h = (v + tacc) / (2 * tacc)
+        h = (v + tacc) / (2 * tacc)
         dx = ((C['x'] * (tacc / T) + A['x']) * (2 - h) * h**2 - 2 * A['x']) * h + A['x']
         dy = ((C['y'] * (tacc / T) + A['y']) * (2 - h) * h**2 - 2 * A['y']) * h + A['y']
         dz = ((C['z'] * (tacc / T) + A['z']) * (2 - h) * h**2 - 2 * A['z']) * h + A['z']
@@ -259,7 +259,6 @@ def draw_cartesian_path(title_plot, pos, ori, mode):
 
 
 def joint_move():
-    puma = puma560() # create a puma560 object
     t  = np.arange(0.0, 2*T, tsample)
     # point A got only one solution 
     P1 = np.array([-100.4577302516985, 70.61077411145472, 48.39965042684975, -5.957243485063329e-15, 60.98957546169554, 29.274572620257292])
@@ -287,7 +286,6 @@ def joint_move():
     cp = np.zeros((3, len(t)))
     cv = np.zeros((3, len(t)))
     ca = np.zeros((3, len(t)))
-
     ori = np.zeros((3, len(t)))
 
     for i, v in enumerate(t):
@@ -367,15 +365,15 @@ def cartesian_move():
     draw_cartesian('speed', dt, dc)
 
     # Create figure for cartesian accelerations
-    dt2 = t[:-4]
-    dc2x = (np.append(dcx[1:], dcx[-1])[:-1] - dcx[:-1]) / tsample
-    dc2y = (np.append(dcy[1:], dcy[-1])[:-1] - dcy[:-1]) / tsample
-    dc2z = (np.append(dcz[1:], dcz[-1])[:-1] - dcz[:-1]) / tsample
-    dc2x = np.concatenate((dc2x[:149], dc2x[150:]))
-    dc2y = np.concatenate((dc2y[:149], dc2y[150:]))
-    dc2z = np.concatenate((dc2z[:149], dc2z[150:]))
-    dc2 = np.array([dc2x, dc2y, dc2z])
-    draw_cartesian('acc', dt2, dc2)
+    ddt = t[:-4]
+    ddcx = (np.append(dcx[1:], dcx[-1])[:-1] - dcx[:-1]) / tsample
+    ddcy = (np.append(dcy[1:], dcy[-1])[:-1] - dcy[:-1]) / tsample
+    ddcz = (np.append(dcz[1:], dcz[-1])[:-1] - dcz[:-1]) / tsample
+    ddcx = np.concatenate((ddcx[:149], ddcx[150:]))
+    ddcy = np.concatenate((ddcy[:149], ddcy[150:]))
+    ddcz = np.concatenate((ddcz[:149], ddcz[150:]))
+    dc2 = np.array([ddcx, ddcy, ddcz])
+    draw_cartesian('acc', ddt, dc2)
 
     # Create figure for cartesian path
     title_plot = '3D path of cartesian space planning'

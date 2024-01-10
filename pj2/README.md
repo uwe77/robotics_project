@@ -13,7 +13,7 @@ First you'll see... \
 Enter "1" or "2" to chose joint or cartesian move.
 
 ## 程式架構說明
-### Joint move
+### Joint Move
 1. Initialization:
 The function starts by creating a puma560 object and initializing arrays to store joint positions (P1, P2, P3), velocities (L1, L2), and other trajectory parameters.
 
@@ -25,7 +25,7 @@ The time t is divided into intervals, and for each interval, the appropriate tra
 For each time step, the joint positions are transformed into Cartesian coordinates using the trans_pos function.
 These positions and orientations are then used to plot the joint movements in both joint space (angles) and Cartesian space (3D path).
 
-### Cartesian move
+### Cartesian Move
 
 1. Trajectory Calculation Between Points:
 It starts by computing the transitions between points A, B, and C using the from_2_end function. This function computes the necessary changes in position and orientation (in terms of x, y, z, psi, theta, and phi) to move from one point to another.
@@ -44,6 +44,26 @@ It also plots the velocity and acceleration profiles for the movement, providing
 
 5. Orientation Handling:
 Special attention is given to the orientation (Euler angles: psi, theta, phi) to ensure a smooth rotational transition during the movement.
+
+## 數學運算說明
+
+### Joint Move
+<img src="./images/p1.png"/>
+<img src="./images/p2.png"/>
+<img src="./images/p3.png"/>
+<img src="./images/p4.png"/>
+<img src="./images/p5.png"/>
+
+### Cartesian Move
+<img src="./images/1.png"/>
+<img src="./images/2.png"/>
+<img src="./images/3.png"/>
+<img src="./images/4.png"/>
+<img src="./images/5.png"/>
+<img src="./images/6.png"/>
+<img src="./images/7.png"/>
+<img src="./images/8.png"/>
+<img src="./images/9.png"/>
 
 ## Joint Move Result
 
